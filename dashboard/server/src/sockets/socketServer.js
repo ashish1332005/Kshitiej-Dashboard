@@ -4,7 +4,7 @@ import { config } from '../config.js';
 export function createSocketServer(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: config.clientOrigin,
+      origin: config.clientOrigins.includes('*') ? '*' : config.clientOrigins,
       methods: ['GET', 'POST']
     }
   });

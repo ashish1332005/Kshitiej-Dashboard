@@ -18,7 +18,18 @@ const app = express();
 const server = http.createServer(app);
 const socketServer = createSocketServer(server);
 
-app.use(cors({ origin: config.clientOrigin }));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || config.clientOrigins.includes('*') || config.clientOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    }
+  })
+);
 app.use(express.json());
 
 app.use('/api', telemetryRoutes(socketServer));
