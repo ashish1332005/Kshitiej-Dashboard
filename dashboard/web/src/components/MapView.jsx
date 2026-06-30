@@ -17,6 +17,8 @@ function MapView({
   const gpsValid = Boolean(packet?.gps?.valid);
   const hasPosition = gpsValid && Number.isFinite(latitude) && Number.isFinite(longitude);
   const mapPosition = hasPosition ? [latitude, longitude] : defaultPosition;
+  const satellites = packet?.gps?.satellites;
+  const hasStrongFix = hasPosition && (!Number.isFinite(satellites) || satellites >= 4);
   const path = packets
     .filter((item) => item?.gps?.valid && Number.isFinite(item.gps.latitude) && Number.isFinite(item.gps.longitude))
     .slice(-25)
@@ -50,7 +52,7 @@ function MapView({
         title={isExpanded ? 'Close large map' : 'Open large map'}
       >
         <div className={isExpanded ? 'h-[72vh]' : 'h-[420px]'}>
-          <MapContainer center={mapPosition} zoom={isExpanded ? 15 : 13} className="h-full w-full">
+          <MapContainer center={mapPosition} zoom={isExpanded ? 17 : 16} className="h-full w-full">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -63,7 +65,7 @@ function MapView({
               radius={geofenceRadius}
             />
           )}
-          {showTrack && path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#22c55e', weight: 4 }} />}
+          {showTrack && path.length > 1 && <Polyline positions={path} pathOptions={{ color: '#22c55e', weight: 3 }} />}
           {hasPosition && <Marker position={mapPosition} />}
           </MapContainer>
         </div>
@@ -74,11 +76,12 @@ function MapView({
           </div>
         )}
 
-        <div className="absolute inset-x-4 bottom-4 z-[500] grid grid-cols-2 gap-3 rounded-lg border border-cyan-300/10 bg-[#071426]/90 p-3 text-xs shadow-xl backdrop-blur sm:grid-cols-4">
+        <div className="absolute inset-x-4 bottom-4 z-[500] grid grid-cols-2 gap-3 rounded-lg border border-cyan-300/10 bg-[#071426]/90 p-3 text-xs shadow-xl backdrop-blur sm:grid-cols-5">
           <Metric label="Latitude" value={hasPosition ? latitude.toFixed(6) : 'No fix'} />
           <Metric label="Longitude" value={hasPosition ? longitude.toFixed(6) : 'No fix'} />
-          <Metric label="Altitude" value={packet?.gps?.altitude ? `${packet.gps.altitude.toFixed(1)} m` : 'No data'} />
-          <Metric label="Speed" value={packet?.gps?.speed ? `${packet.gps.speed.toFixed(1)} km/h` : 'No data'} />
+          <Metric label="Altitude" value={Number.isFinite(packet?.gps?.altitude) ? `${packet.gps.altitude.toFixed(1)} m` : 'No data'} />
+          <Metric label="Speed" value={Number.isFinite(packet?.gps?.speed) ? `${packet.gps.speed.toFixed(1)} km/h` : 'No data'} />
+          <Metric label="Fix Quality" value={hasStrongFix ? `${satellites ?? 'GPS'} sats` : 'Weak fix'} />
         </div>
         {hasPosition && (
           <a

@@ -26,6 +26,7 @@ import SystemLog from './components/SystemLog.jsx';
 import TelemetryTable from './components/TelemetryTable.jsx';
 import { fetchTelemetry } from './api';
 import { createTelemetrySocket } from './socket';
+import { applyFallRisk } from './utils/fallDetection.js';
 
 function App() {
   const [packets, setPackets] = useState([]);
@@ -118,13 +119,14 @@ function App() {
   );
   const latestDeviceId = lastLivePacket?.deviceId ?? '';
   const activeDeviceId = selectedDevice === 'latest' ? latestDeviceId : selectedDevice;
-  const visiblePackets = useMemo(
-    () =>
+  const visiblePackets = useMemo(() => {
+    const rows =
       activeDeviceId === 'all' || !activeDeviceId
         ? packets
-        : packets.filter((packet) => packet.deviceId === activeDeviceId),
-    [activeDeviceId, packets]
-  );
+        : packets.filter((packet) => packet.deviceId === activeDeviceId);
+
+    return rows.map((packet, index) => applyFallRisk(packet, rows[index - 1] ?? null));
+  }, [activeDeviceId, packets]);
   const historyLatestPacket = visiblePackets.at(-1) ?? null;
   const selectedLivePacket =
     lastLivePacket && (activeDeviceId === 'all' || !activeDeviceId || lastLivePacket.deviceId === activeDeviceId)
@@ -292,7 +294,6 @@ function App() {
                     geofenceRadius={500}
                     packet={mapPacket}
                     packets={visiblePackets}
-                    showTrack
                     onToggle={() => setMapExpanded(true)}
                   />
                   <div className="grid gap-4">

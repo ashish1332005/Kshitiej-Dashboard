@@ -6,6 +6,8 @@ const BASE_LATITUDE = 28.6139;
 const BASE_LONGITUDE = 77.209;
 
 let sequence = 1;
+let latitude = BASE_LATITUDE;
+let longitude = BASE_LONGITUDE;
 
 function randomBetween(min, max, decimals = 2) {
   const value = min + Math.random() * (max - min);
@@ -17,20 +19,23 @@ function randomInt(min, max) {
 }
 
 function createFakeTelemetryPacket() {
-  const freefall = Math.random() < 0.08;
-  const ax = freefall ? randomBetween(-0.08, 0.08, 3) : randomBetween(-0.25, 0.25, 3);
-  const ay = freefall ? randomBetween(-0.08, 0.08, 3) : randomBetween(-0.25, 0.25, 3);
-  const az = freefall ? randomBetween(-0.08, 0.08, 3) : randomBetween(0.85, 1.15, 3);
+  const freefall = false;
+  latitude += randomBetween(-0.00004, 0.00004, 6);
+  longitude += randomBetween(-0.00004, 0.00004, 6);
+
+  const ax = randomBetween(-0.25, 0.25, 3);
+  const ay = randomBetween(-0.25, 0.25, 3);
+  const az = randomBetween(0.85, 1.15, 3);
   const gMagnitude = Number(Math.sqrt(ax * ax + ay * ay + az * az).toFixed(3));
 
   return {
     deviceId: DEVICE_ID,
     sequence: sequence++,
     gps: {
-      latitude: randomBetween(BASE_LATITUDE - 0.006, BASE_LATITUDE + 0.006, 6),
-      longitude: randomBetween(BASE_LONGITUDE - 0.006, BASE_LONGITUDE + 0.006, 6),
+      latitude: Number(latitude.toFixed(6)),
+      longitude: Number(longitude.toFixed(6)),
       altitude: randomBetween(205, 235, 1),
-      speed: randomBetween(0, 18, 1),
+      speed: randomBetween(0, 8, 1),
       satellites: randomInt(6, 12),
       valid: true
     },
@@ -42,7 +47,7 @@ function createFakeTelemetryPacket() {
     },
     event: {
       freefall,
-      alertLevel: freefall ? 'critical' : Math.random() < 0.12 ? 'warning' : 'normal'
+      alertLevel: 'normal'
     },
     lora: {
       rssi: randomInt(-112, -62),

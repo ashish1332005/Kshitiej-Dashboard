@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { mongoState } from '../database/mongoConnection.js';
 import { Telemetry } from '../database/telemetryModel.js';
-import { parseTelemetryLine, serializeTelemetry } from '../serial/telemetryParser.js';
+import { applyFallDetectionRules, parseTelemetryLine, serializeTelemetry } from '../serial/telemetryParser.js';
 
 function parseLimit(value, fallback = 100) {
   const limit = Number(value ?? fallback);
@@ -98,7 +98,9 @@ export function telemetryRoutes(socketServer) {
         return;
       }
 
-      const saved = await Telemetry.create(parsed.payload);
+      const previous = await Telemetry.findOne({ deviceId: parsed.payload.deviceId }).sort({ receivedAt: -1 }).lean();
+      const normalizedPayload = applyFallDetectionRules(parsed.payload, previous);
+      const saved = await Telemetry.create(normalizedPayload);
       const packet = serializeTelemetry(saved);
       socketServer.broadcastTelemetry(packet);
       res.status(201).json(packet);

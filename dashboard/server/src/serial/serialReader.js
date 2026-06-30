@@ -2,7 +2,7 @@ import { ReadlineParser } from '@serialport/parser-readline';
 import { SerialPort } from 'serialport';
 import { config } from '../config.js';
 import { Telemetry } from '../database/telemetryModel.js';
-import { parseTelemetryLine, serializeTelemetry } from './telemetryParser.js';
+import { applyFallDetectionRules, parseTelemetryLine, serializeTelemetry } from './telemetryParser.js';
 
 function parseNumber(value) {
   const match = String(value ?? '').match(/-?\d+(?:\.\d+)?/);
@@ -178,10 +178,12 @@ export function startSerialReader({ socketServer }) {
         console.log(`[serial-debug] ${trimmed}`);
         const textPacket = textDashboardParser.push(trimmed);
         if (textPacket) {
-          let packet = serializeTelemetry(textPacket);
+          const previous = await Telemetry.findOne({ deviceId: textPacket.deviceId }).sort({ receivedAt: -1 }).lean();
+          const normalizedTextPacket = applyFallDetectionRules(textPacket, previous);
+          let packet = serializeTelemetry(normalizedTextPacket);
 
           try {
-            const saved = await Telemetry.create(textPacket);
+            const saved = await Telemetry.create(normalizedTextPacket);
             packet = serializeTelemetry(saved);
             console.log(`[telemetry] ${packet.deviceId} #${packet.sequence} saved from text dashboard`);
           } catch (databaseError) {
@@ -206,10 +208,12 @@ export function startSerialReader({ socketServer }) {
         return;
       }
 
-      let packet = serializeTelemetry(parsed.payload);
+      const previous = await Telemetry.findOne({ deviceId: parsed.payload.deviceId }).sort({ receivedAt: -1 }).lean();
+      const normalizedPayload = applyFallDetectionRules(parsed.payload, previous);
+      let packet = serializeTelemetry(normalizedPayload);
 
       try {
-        const saved = await Telemetry.create(parsed.payload);
+        const saved = await Telemetry.create(normalizedPayload);
         packet = serializeTelemetry(saved);
         console.log(`[telemetry] ${packet.deviceId} #${packet.sequence} saved`);
       } catch (databaseError) {
