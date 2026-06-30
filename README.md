@@ -1,4 +1,4 @@
-# aad-telemetry-dashboard
+# Kshitiej-Dashboard
 
 Telemetry dashboard for an ESP32 LoRa sensor link.
 
