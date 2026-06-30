@@ -28,12 +28,6 @@ import { fetchTelemetry } from './api';
 import { createTelemetrySocket } from './socket';
 import { applyFallRisk } from './utils/fallDetection.js';
 
-const showSimulatorPackets = import.meta.env.VITE_SHOW_SIMULATOR === 'true';
-
-function isDisplayablePacket(packet) {
-  return showSimulatorPackets || packet?.packet?.raw?.source !== 'simulator';
-}
-
 function App() {
   const [packets, setPackets] = useState([]);
   const [latestPacket, setLatestPacket] = useState(null);
@@ -59,7 +53,7 @@ function App() {
           return;
         }
 
-        const rows = (Array.isArray(history) ? history : []).filter(isDisplayablePacket);
+        const rows = Array.isArray(history) ? history : [];
         const latest = rows.at(-1) ?? null;
         setPackets(rows);
         setLatestPacket(latest);
@@ -101,10 +95,6 @@ function App() {
     socket.on('disconnect', () => setSocketConnected(false));
 
     socket.on('telemetry', (packet) => {
-      if (!isDisplayablePacket(packet)) {
-        return;
-      }
-
       setLatestPacket(packet);
       setLastLivePacket(packet);
       setLastPacketAt(Date.now());
