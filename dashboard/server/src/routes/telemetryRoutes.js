@@ -23,6 +23,7 @@ export function telemetryRoutes(socketServer) {
     res.json({
       ok: true,
       service: 'aad-telemetry-backend',
+      frontendPolling: true,
       mode: config.simulatorMode ? 'simulator' : 'serial',
       mongo: mongoState(),
       at: new Date().toISOString()
