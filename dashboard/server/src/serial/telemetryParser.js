@@ -123,13 +123,13 @@ export function parseTelemetryLine(line) {
     throw new Error('Telemetry packet must be a JSON object');
   }
 
-  if (raw.level && raw.message) {
+  if ((raw.level || raw.status) && !looksLikeShortPacket(raw)) {
     return {
       type: 'system',
       payload: {
-        service: 'receiver',
-        status: raw.level,
-        message: raw.message
+        service: raw.source ?? 'receiver',
+        status: raw.level ?? raw.status,
+        message: raw.message ?? `Receiver status: ${raw.status ?? raw.level}`
       }
     };
   }

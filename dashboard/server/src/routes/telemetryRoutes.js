@@ -12,6 +12,10 @@ function parseLimit(value, fallback = 100) {
   return Math.min(Math.floor(limit), 1000);
 }
 
+function telemetryFilter() {
+  return config.simulatorMode ? {} : { 'packet.raw.source': { $ne: 'simulator' } };
+}
+
 export function telemetryRoutes(socketServer) {
   const router = Router();
 
@@ -27,7 +31,7 @@ export function telemetryRoutes(socketServer) {
 
   router.get('/telemetry/latest', async (_req, res, next) => {
     try {
-      const latest = await Telemetry.findOne().sort({ receivedAt: -1 });
+      const latest = await Telemetry.findOne(telemetryFilter()).sort({ receivedAt: -1 });
       res.json(latest ? serializeTelemetry(latest) : null);
     } catch (error) {
       next(error);
@@ -36,7 +40,7 @@ export function telemetryRoutes(socketServer) {
 
   router.get('/telemetry/history', async (req, res, next) => {
     try {
-      const rows = await Telemetry.find()
+      const rows = await Telemetry.find(telemetryFilter())
         .sort({ receivedAt: -1 })
         .limit(parseLimit(req.query.limit))
         .lean();
@@ -49,7 +53,7 @@ export function telemetryRoutes(socketServer) {
 
   router.get('/telemetry/freefall', async (req, res, next) => {
     try {
-      const rows = await Telemetry.find({ 'event.freefall': true })
+      const rows = await Telemetry.find({ ...telemetryFilter(), 'event.freefall': true })
         .sort({ receivedAt: -1 })
         .limit(parseLimit(req.query.limit, 100))
         .lean();
@@ -63,10 +67,13 @@ export function telemetryRoutes(socketServer) {
   router.get('/telemetry/stats', async (_req, res, next) => {
     try {
       const [totalPackets, freefallEvents, latest, byAlertLevel] = await Promise.all([
-        Telemetry.countDocuments(),
-        Telemetry.countDocuments({ 'event.freefall': true }),
-        Telemetry.findOne().sort({ receivedAt: -1 }).lean(),
+        Telemetry.countDocuments(telemetryFilter()),
+        Telemetry.countDocuments({ ...telemetryFilter(), 'event.freefall': true }),
+        Telemetry.findOne(telemetryFilter()).sort({ receivedAt: -1 }).lean(),
         Telemetry.aggregate([
+          {
+            $match: telemetryFilter()
+          },
           {
             $group: {
               _id: '$event.alertLevel',
