@@ -24,7 +24,7 @@ import Sidebar from './components/Sidebar.jsx';
 import StatusCards from './components/StatusCards.jsx';
 import SystemLog from './components/SystemLog.jsx';
 import TelemetryTable from './components/TelemetryTable.jsx';
-import { fetchTelemetry } from './api';
+import { fetchLatestTelemetry, fetchTelemetry } from './api';
 import { createTelemetrySocket } from './socket';
 import { applyFallRisk } from './utils/fallDetection.js';
 
@@ -106,6 +106,66 @@ function App() {
     });
 
     return () => socket.close();
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    const loadLatest = () => {
+      fetchLatestTelemetry()
+        .then((packet) => {
+          if (ignore || !packet) {
+            return;
+          }
+
+          setLatestPacket(packet);
+          setLastLivePacket(packet);
+
+          if (packet.receivedAt) {
+            const receivedAt = new Date(packet.receivedAt).getTime();
+            if (Number.isFinite(receivedAt)) {
+              setLastPacketAt(receivedAt);
+            }
+          }
+
+          setPackets((current) => {
+            if (current.some((item) => item.id && item.id === packet.id)) {
+              return current;
+            }
+
+            if (current.some((item) => item.deviceId === packet.deviceId && item.sequence === packet.sequence)) {
+              return current;
+            }
+
+            return [...current, packet].slice(-100);
+          });
+        })
+        .catch((error) => {
+          if (ignore) {
+            return;
+          }
+
+          setSystemLog((current) =>
+            [
+              {
+                service: 'api',
+                status: 'warning',
+                message: error.message,
+                at: new Date().toISOString()
+              },
+              ...current
+            ].slice(0, 30)
+          );
+        });
+    };
+
+    loadLatest();
+    const timer = window.setInterval(loadLatest, 2000);
+
+    return () => {
+      ignore = true;
+      window.clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
